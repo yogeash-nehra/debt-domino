@@ -1,0 +1,6 @@
+@DebtDomino.API_HostAddress = http://localhost:5016
+
+GET {{DebtDomino.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

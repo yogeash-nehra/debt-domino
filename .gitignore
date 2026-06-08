@@ -1,0 +1,25 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+*.suo
+.vscode/
+
+# EF Core
+Migrations/
+
+# Secrets — NEVER commit
+.env
+appsettings.Development.json
+appsettings.Production.json
+*.pfx
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# OS
+.DS_Store
+Thumbs.db
