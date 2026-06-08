@@ -17,8 +17,8 @@ services:
 
   api:
     build:
-      context: ./backend
-      dockerfile: DebtDomino.API/Dockerfile
+      context: .
+      dockerfile: backend/DebtDomino.API/Dockerfile
     ports:
       - "5000:8080"
     environment:
