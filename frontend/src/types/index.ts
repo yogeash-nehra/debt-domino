@@ -81,3 +81,14 @@ export interface CreateDebtForm {
   minimumPayment: number
   paymentDueDay?: number
 }
+
+export interface Payment {
+  id: string
+  debtId: string
+  amount: number
+  paymentDate: string
+  principal: number
+  interest: number
+  balanceAfter: number
+  notes?: string
+}

@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
-import { LayoutDashboard, CreditCard, TrendingDown, LogOut } from 'lucide-react'
+import { LayoutDashboard, CreditCard, TrendingDown, Receipt, LogOut } from 'lucide-react'
 
 export function Layout() {
   const { user, logout } = useAuthStore()
@@ -40,6 +40,10 @@ export function Layout() {
           <NavLink to="/debts" className={navClass}>
             <CreditCard size={16} />
             My Debts
+          </NavLink>
+          <NavLink to="/payments" className={navClass}>
+            <Receipt size={16} />
+            Payments
           </NavLink>
           <NavLink to="/plan" className={navClass}>
             <TrendingDown size={16} />
