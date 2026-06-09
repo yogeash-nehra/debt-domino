@@ -50,7 +50,9 @@ public static class PaymentEndpoints
         {
             DebtId = req.DebtId,
             Amount = req.Amount,
-            PaymentDate = req.PaymentDate ?? DateTime.UtcNow,
+            PaymentDate = req.PaymentDate.HasValue
+                ? DateTime.SpecifyKind(req.PaymentDate.Value, DateTimeKind.Utc)
+                : DateTime.UtcNow,
             Principal = principal,
             Interest = interest,
             BalanceAfter = newBalance,
