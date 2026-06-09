@@ -1,0 +1,11 @@
+# .NET build artifacts with Windows-baked paths
+**/obj/
+**/bin/
+
+# Node
+**/node_modules/
+frontend/dist/
+
+# Secrets / local config
+.env
+**/.env.local
