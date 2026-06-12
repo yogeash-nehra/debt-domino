@@ -1,11 +1,21 @@
 #!/bin/sh
 set -e
 
-if [ -z "$API_URL" ]; then
-  echo "ERROR: API_URL environment variable is required (e.g. https://your-api.onrender.com)" >&2
-  exit 1
+if [ -n "$API_URL" ]; then
+  envsubst '${API_URL}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
+else
+  echo "WARNING: API_URL is not set — /api calls will not be proxied. Set API_URL in Render to point to your backend." >&2
+  cat > /etc/nginx/conf.d/default.conf << 'NGINX'
+server {
+    listen 80;
+    root /usr/share/nginx/html;
+    index index.html;
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+    error_page 404 /index.html;
+}
+NGINX
 fi
-
-envsubst '${API_URL}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
 
 exec nginx -g 'daemon off;'
