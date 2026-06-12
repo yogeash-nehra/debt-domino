@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { planService } from '../services/planService'
 import { debtService } from '../services/debtService'
+import { useAuthStore } from '../store/authStore'
+import { useGuestStore } from '../store/guestStore'
 import type { Snapshot, Strategy } from '../types'
 import { PayoffChart } from '../components/PayoffChart'
 import { TrendingDown, RefreshCw } from 'lucide-react'
@@ -20,6 +22,12 @@ function fmtDate(iso: string) {
 }
 
 export function PlanPage() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const guestDebts = useGuestStore((s) => s.debts.filter((d) => !d.isPaidOff))
+  const guestStrategy = useGuestStore((s) => s.strategy)
+  const guestExtra = useGuestStore((s) => s.extraMonthlyPayment)
+  const guestSetPlan = useGuestStore((s) => s.setPlan)
+
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const [strategy, setStrategy] = useState<Strategy>('avalanche')
   const [extra, setExtra] = useState(0)
@@ -27,15 +35,36 @@ export function PlanPage() {
   const [loading, setLoading] = useState(true)
   const [calculating, setCalculating] = useState(false)
   const [noDebts, setNoDebts] = useState(false)
-
-  // Client-side preview calculation for instant slider feedback
   const [previewSnapshot, setPreviewSnapshot] = useState<Snapshot | null>(null)
+
+  function guestDebtInputs() {
+    return guestDebts.map((d) => ({
+      balance: d.currentBalance,
+      annualRate: d.annualInterestRate,
+      minimumPayment: d.minimumPayment,
+      sortOrder: d.sortOrder,
+    }))
+  }
 
   useEffect(() => {
     async function init() {
       try {
+        if (!isAuthenticated) {
+          if (guestDebts.length === 0) { setNoDebts(true); return }
+          setStrategy(guestStrategy)
+          setExtra(guestExtra)
+          setSliderValue(guestExtra)
+          const { data } = await api.post<Snapshot>('/plans/preview', {
+            strategy: guestStrategy,
+            extraMonthlyPayment: guestExtra,
+            debts: guestDebtInputs(),
+          })
+          setSnapshot(data)
+          return
+        }
+
         const summary = await debtService.getAll()
-        if (summary.activeDebtCount === 0) { setNoDebts(true); setLoading(false); return }
+        if (summary.activeDebtCount === 0) { setNoDebts(true); return }
 
         const plan = await planService.getActive()
         setStrategy(plan.strategy as Strategy)
@@ -50,11 +79,22 @@ export function PlanPage() {
       }
     }
     init()
-  }, [])
+  }, [isAuthenticated])
 
   async function recalculate(strat = strategy, extraPayment = extra) {
     setCalculating(true)
     try {
+      if (!isAuthenticated) {
+        const { data } = await api.post<Snapshot>('/plans/preview', {
+          strategy: strat,
+          extraMonthlyPayment: extraPayment,
+          debts: guestDebtInputs(),
+        })
+        setSnapshot(data)
+        setPreviewSnapshot(null)
+        guestSetPlan(strat, extraPayment)
+        return
+      }
       await planService.save(strat, extraPayment)
       const snap = await planService.calculate()
       setSnapshot(snap)
@@ -64,20 +104,23 @@ export function PlanPage() {
     }
   }
 
-  // Live slider preview via /plans/preview endpoint
   const runPreview = useCallback(async (extraPayment: number) => {
     try {
-      const summary = await debtService.getAll()
-      const debts = summary.debts
-        .filter(d => !d.isPaidOff)
-        .map(d => ({ balance: d.currentBalance, annualRate: d.annualInterestRate, minimumPayment: d.minimumPayment, sortOrder: d.sortOrder }))
-
+      let debts
+      if (isAuthenticated) {
+        const summary = await debtService.getAll()
+        debts = summary.debts
+          .filter((d) => !d.isPaidOff)
+          .map((d) => ({ balance: d.currentBalance, annualRate: d.annualInterestRate, minimumPayment: d.minimumPayment, sortOrder: d.sortOrder }))
+      } else {
+        debts = guestDebtInputs()
+      }
       const { data } = await api.post<Snapshot>('/plans/preview', { strategy, extraMonthlyPayment: extraPayment, debts })
       setPreviewSnapshot(data)
     } catch {
-      // preview failing silently is fine — still show last saved snapshot
+      // preview failing silently is fine
     }
-  }, [strategy])
+  }, [strategy, isAuthenticated, guestDebts])
 
   async function handleSliderChange(val: number) {
     setSliderValue(val)
@@ -128,9 +171,7 @@ export function PlanPage() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Left column — controls */}
         <div className="space-y-4">
-          {/* Debt-free date */}
           {display?.debtFreeDate && (
             <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-6 text-white">
               <p className="text-indigo-200 text-xs font-medium uppercase tracking-wide mb-1">Debt-free date</p>
@@ -139,7 +180,6 @@ export function PlanPage() {
             </div>
           )}
 
-          {/* Interest saved */}
           {display && display.interestSaved > 0 && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-4">
               <p className="text-xs text-green-600 font-medium uppercase tracking-wide mb-1">Interest saved vs minimums only</p>
@@ -147,11 +187,10 @@ export function PlanPage() {
             </div>
           )}
 
-          {/* Strategy selector */}
           <div className="bg-white rounded-xl border border-slate-200 p-4">
             <p className="text-sm font-medium text-slate-700 mb-3">Strategy</p>
             <div className="space-y-2">
-              {STRATEGIES.map(s => (
+              {STRATEGIES.map((s) => (
                 <button
                   key={s.value}
                   onClick={() => handleStrategyChange(s.value)}
@@ -168,7 +207,6 @@ export function PlanPage() {
             </div>
           </div>
 
-          {/* Extra payment slider */}
           <div className="bg-white rounded-xl border border-slate-200 p-4">
             <div className="flex justify-between items-center mb-3">
               <p className="text-sm font-medium text-slate-700">Extra monthly payment</p>
@@ -193,12 +231,11 @@ export function PlanPage() {
                 disabled={calculating}
                 className="mt-3 w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
               >
-                {calculating ? 'Saving...' : 'Apply & save plan'}
+                {calculating ? 'Saving...' : isAuthenticated ? 'Apply & save plan' : 'Apply'}
               </button>
             )}
           </div>
 
-          {/* Summary stats */}
           {display && (
             <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
               <div className="flex justify-between text-sm">
@@ -213,7 +250,6 @@ export function PlanPage() {
           )}
         </div>
 
-        {/* Right column — chart */}
         <div className="xl:col-span-2">
           {display ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-6">
@@ -221,7 +257,6 @@ export function PlanPage() {
               <p className="text-xs text-slate-400 mb-6">Each line is a debt. Watch them fall like dominoes.</p>
               <PayoffChart snapshot={display} />
 
-              {/* Per-debt breakdown */}
               <div className="mt-6 space-y-2">
                 {display.debts.map((d, i) => (
                   <div key={d.debtId} className="flex items-center gap-3 text-sm">

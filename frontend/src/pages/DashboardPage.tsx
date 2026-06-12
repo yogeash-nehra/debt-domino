@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { planService } from '../services/planService'
-import type { Dashboard } from '../types'
+import { useAuthStore } from '../store/authStore'
+import { useGuestStore } from '../store/guestStore'
+import api from '../services/api'
+import type { Dashboard, Snapshot } from '../types'
 import { TrendingDown, CreditCard, Calendar, PiggyBank, Plus } from 'lucide-react'
 
 function fmt(n: number) {
@@ -13,14 +16,50 @@ function fmtDate(iso: string) {
 }
 
 export function DashboardPage() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const guestDebts = useGuestStore((s) => s.debts.filter((d) => !d.isPaidOff))
+  const guestStrategy = useGuestStore((s) => s.strategy)
+  const guestExtra = useGuestStore((s) => s.extraMonthlyPayment)
+
   const [data, setData] = useState<Dashboard | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    planService.getDashboard()
-      .then(setData)
+    if (isAuthenticated) {
+      planService.getDashboard()
+        .then(setData)
+        .finally(() => setLoading(false))
+      return
+    }
+
+    // Guest mode: compute stats locally, fetch debt-free date from preview endpoint
+    const totalDebt = guestDebts.reduce((s, d) => s + d.currentBalance, 0)
+    const totalMinimumPayment = guestDebts.reduce((s, d) => s + d.minimumPayment, 0)
+    const base: Dashboard = {
+      totalDebt,
+      totalMinimumPayment,
+      activeDebts: guestDebts.length,
+      percentPaidOff: 0,
+    }
+
+    if (guestDebts.length === 0) {
+      setData(base)
+      setLoading(false)
+      return
+    }
+
+    const debts = guestDebts.map((d) => ({
+      balance: d.currentBalance,
+      annualRate: d.annualInterestRate,
+      minimumPayment: d.minimumPayment,
+      sortOrder: d.sortOrder,
+    }))
+
+    api.post<Snapshot>('/plans/preview', { strategy: guestStrategy, extraMonthlyPayment: guestExtra, debts })
+      .then((r) => setData({ ...base, debtFreeDate: r.data.debtFreeDate, interestSaved: r.data.interestSaved }))
+      .catch(() => setData(base))
       .finally(() => setLoading(false))
-  }, [])
+  }, [isAuthenticated, guestDebts, guestStrategy, guestExtra])
 
   if (loading) {
     return (
@@ -54,7 +93,6 @@ export function DashboardPage() {
         </div>
       ) : (
         <>
-          {/* Debt-free date hero */}
           {data?.debtFreeDate && (
             <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-8 mb-6 text-white">
               <p className="text-indigo-200 text-sm font-medium uppercase tracking-wide mb-2">Your debt-free date</p>
@@ -67,7 +105,6 @@ export function DashboardPage() {
             </div>
           )}
 
-          {/* Stats grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatCard icon={<TrendingDown size={20} />} label="Total debt" value={fmt(data?.totalDebt ?? 0)} color="text-red-600" />
             <StatCard icon={<CreditCard size={20} />} label="Active debts" value={String(data?.activeDebts ?? 0)} color="text-orange-600" />
@@ -75,7 +112,6 @@ export function DashboardPage() {
             <StatCard icon={<PiggyBank size={20} />} label="Paid off" value={`${data?.percentPaidOff ?? 0}%`} color="text-green-600" />
           </div>
 
-          {/* Progress bar */}
           {(data?.percentPaidOff ?? 0) > 0 && (
             <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
               <div className="flex justify-between items-center mb-3">
@@ -91,7 +127,6 @@ export function DashboardPage() {
             </div>
           )}
 
-          {/* CTA to plan */}
           <Link
             to="/plan"
             className="flex items-center justify-between bg-white rounded-2xl border border-slate-200 p-6 hover:border-indigo-300 hover:shadow-sm transition-all group"

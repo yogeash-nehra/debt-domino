@@ -9,9 +9,9 @@ import { DebtsPage } from './pages/DebtsPage'
 import { PlanPage } from './pages/PlanPage'
 import { PaymentsPage } from './pages/PaymentsPage'
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function AuthRedirect({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />
+  return isAuthenticated ? <Navigate to="/" replace /> : <>{children}</>
 }
 
 export default function App() {
@@ -22,9 +22,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+        <Route path="/login" element={<AuthRedirect><LoginPage /></AuthRedirect>} />
+        <Route path="/register" element={<AuthRedirect><RegisterPage /></AuthRedirect>} />
+        <Route path="/" element={<Layout />}>
           <Route index element={<DashboardPage />} />
           <Route path="debts" element={<DebtsPage />} />
           <Route path="payments" element={<PaymentsPage />} />

@@ -92,6 +92,12 @@ export function RegisterPage() {
               Sign in
             </Link>
           </p>
+
+          <div className="mt-4 pt-4 border-t border-slate-100 text-center">
+            <Link to="/" className="text-sm text-slate-400 hover:text-slate-600">
+              Continue without an account
+            </Link>
+          </div>
         </div>
       </div>
     </div>

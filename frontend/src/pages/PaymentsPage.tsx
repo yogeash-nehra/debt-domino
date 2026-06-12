@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { debtService } from '../services/debtService'
 import { paymentService } from '../services/paymentService'
+import { useAuthStore } from '../store/authStore'
 import type { Debt, Payment } from '../types'
 import { Receipt, Trash2, PlusCircle } from 'lucide-react'
 
@@ -17,6 +19,8 @@ function todayISO() {
 }
 
 export function PaymentsPage() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+
   const [debts, setDebts] = useState<Debt[]>([])
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null)
   const [payments, setPayments] = useState<Payment[]>([])
@@ -30,22 +34,48 @@ export function PaymentsPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    debtService.getAll().then(summary => {
+    if (!isAuthenticated) { setLoading(false); return }
+    debtService.getAll().then((summary) => {
       const active = summary.debts
       setDebts(active)
       if (active.length > 0) setSelectedDebtId(active[0].id)
     }).finally(() => setLoading(false))
-  }, [])
+  }, [isAuthenticated])
 
   useEffect(() => {
-    if (!selectedDebtId) return
+    if (!isAuthenticated || !selectedDebtId) return
     setPaymentsLoading(true)
     paymentService.getAll(selectedDebtId)
       .then(setPayments)
       .finally(() => setPaymentsLoading(false))
-  }, [selectedDebtId])
+  }, [selectedDebtId, isAuthenticated])
 
-  const selectedDebt = debts.find(d => d.id === selectedDebtId)
+  // Guest gate — shown after all hooks are declared
+  if (!isAuthenticated) {
+    return (
+      <div className="p-8">
+        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center max-w-md mx-auto">
+          <Receipt className="mx-auto text-slate-300 mb-4" size={48} />
+          <h2 className="text-lg font-semibold text-slate-900 mb-2">Payment tracking requires an account</h2>
+          <p className="text-slate-500 mb-6">
+            Logging payments calculates the principal/interest split and tracks your real balance over time. Create a free account to unlock this.
+          </p>
+          <Link
+            to="/register"
+            className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700"
+          >
+            Create free account
+          </Link>
+          <p className="text-sm text-slate-400 mt-3">
+            Already have one?{' '}
+            <Link to="/login" className="text-indigo-600 hover:underline">Sign in</Link>
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  const selectedDebt = debts.find((d) => d.id === selectedDebtId)
 
   async function handleLog(e: React.FormEvent) {
     e.preventDefault()
@@ -104,9 +134,8 @@ export function PaymentsPage() {
         <p className="text-slate-500 mt-1">Log payments against your debts and track your progress.</p>
       </div>
 
-      {/* Debt tabs */}
       <div className="flex gap-2 flex-wrap mb-6">
-        {debts.map(debt => (
+        {debts.map((debt) => (
           <button
             key={debt.id}
             onClick={() => setSelectedDebtId(debt.id)}
@@ -125,7 +154,6 @@ export function PaymentsPage() {
       {selectedDebt && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* Log payment form */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <h2 className="font-semibold text-slate-900 mb-1 flex items-center gap-2">
               <PlusCircle size={18} className="text-indigo-600" />
@@ -148,7 +176,7 @@ export function PaymentsPage() {
                     min="0.01"
                     step="0.01"
                     value={amount}
-                    onChange={e => setAmount(e.target.value)}
+                    onChange={(e) => setAmount(e.target.value)}
                     placeholder={`Min: ${fmt(selectedDebt.minimumPayment)}`}
                     required
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -160,7 +188,7 @@ export function PaymentsPage() {
                   <input
                     type="date"
                     value={paymentDate}
-                    onChange={e => setPaymentDate(e.target.value)}
+                    onChange={(e) => setPaymentDate(e.target.value)}
                     required
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
@@ -171,7 +199,7 @@ export function PaymentsPage() {
                   <input
                     type="text"
                     value={notes}
-                    onChange={e => setNotes(e.target.value)}
+                    onChange={(e) => setNotes(e.target.value)}
                     placeholder="e.g. Monthly payment"
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
@@ -190,7 +218,6 @@ export function PaymentsPage() {
             )}
           </div>
 
-          {/* Payment history */}
           <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6">
             <h2 className="font-semibold text-slate-900 mb-4">
               Payment history
@@ -219,7 +246,7 @@ export function PaymentsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {payments.map(p => (
+                    {payments.map((p) => (
                       <tr key={p.id} className="hover:bg-slate-50 transition-colors">
                         <td className="py-3 pr-4 text-slate-700">{fmtDate(p.paymentDate)}</td>
                         <td className="py-3 pr-4 text-right font-semibold text-slate-900">{fmt(p.amount)}</td>
@@ -240,7 +267,6 @@ export function PaymentsPage() {
                   </tbody>
                 </table>
 
-                {/* Totals row */}
                 <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end gap-6 text-sm">
                   <span className="text-slate-500">Total paid: <span className="font-semibold text-slate-900">{fmt(payments.reduce((s, p) => s + p.amount, 0))}</span></span>
                   <span className="text-slate-500">Total interest: <span className="font-semibold text-red-500">{fmt(payments.reduce((s, p) => s + p.interest, 0))}</span></span>

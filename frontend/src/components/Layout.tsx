@@ -1,9 +1,9 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
-import { LayoutDashboard, CreditCard, TrendingDown, Receipt, LogOut } from 'lucide-react'
+import { LayoutDashboard, CreditCard, TrendingDown, Receipt, LogOut, UserPlus } from 'lucide-react'
 
 export function Layout() {
-  const { user, logout } = useAuthStore()
+  const { user, logout, isAuthenticated } = useAuthStore()
   const navigate = useNavigate()
 
   function handleLogout() {
@@ -27,8 +27,11 @@ export function Layout() {
             <TrendingDown className="text-indigo-600" size={24} />
             <span className="font-bold text-lg text-slate-900">Debt Domino</span>
           </div>
-          {user?.firstName && (
+          {isAuthenticated && user?.firstName && (
             <p className="text-xs text-slate-500 mt-1">Hi, {user.firstName}</p>
+          )}
+          {!isAuthenticated && (
+            <p className="text-xs text-slate-500 mt-1">Guest mode</p>
           )}
         </div>
 
@@ -52,13 +55,33 @@ export function Layout() {
         </nav>
 
         <div className="p-4 border-t border-slate-200">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <LogOut size={16} />
-            Sign out
-          </button>
+          {isAuthenticated ? (
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <LogOut size={16} />
+              Sign out
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-slate-400 px-1 mb-2">Your data is saved locally. Sign up to keep it forever.</p>
+              <Link
+                to="/register"
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+              >
+                <UserPlus size={16} />
+                Create free account
+              </Link>
+              <Link
+                to="/login"
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <LogOut size={16} />
+                Sign in
+              </Link>
+            </div>
+          )}
         </div>
       </aside>
 

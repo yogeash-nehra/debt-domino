@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { debtService } from '../services/debtService'
+import { useAuthStore } from '../store/authStore'
+import { useGuestStore } from '../store/guestStore'
 import type { Debt, CreateDebtForm } from '../types'
 import { Plus, Pencil, Trash2, CreditCard } from 'lucide-react'
 import { DebtFormModal } from '../components/DebtFormModal'
@@ -27,6 +29,12 @@ const DEBT_TYPE_COLORS: Record<string, string> = {
 }
 
 export function DebtsPage() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const guestDebts = useGuestStore((s) => s.debts.filter((d) => !d.isPaidOff))
+  const guestAdd = useGuestStore((s) => s.addDebt)
+  const guestUpdate = useGuestStore((s) => s.updateDebt)
+  const guestRemove = useGuestStore((s) => s.removeDebt)
+
   const [debts, setDebts] = useState<Debt[]>([])
   const [totalBalance, setTotalBalance] = useState(0)
   const [totalMin, setTotalMin] = useState(0)
@@ -34,32 +42,59 @@ export function DebtsPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Debt | null>(null)
 
+  function syncFromGuest() {
+    setDebts(guestDebts)
+    setTotalBalance(guestDebts.reduce((s, d) => s + d.currentBalance, 0))
+    setTotalMin(guestDebts.reduce((s, d) => s + d.minimumPayment, 0))
+  }
+
   async function loadDebts() {
+    if (!isAuthenticated) {
+      syncFromGuest()
+      setLoading(false)
+      return
+    }
     const summary = await debtService.getAll()
-    setDebts(summary.debts.filter(d => !d.isPaidOff))
+    setDebts(summary.debts.filter((d) => !d.isPaidOff))
     setTotalBalance(summary.totalBalance)
     setTotalMin(summary.totalMinimumPayment)
   }
 
   useEffect(() => {
     loadDebts().finally(() => setLoading(false))
-  }, [])
+  }, [isAuthenticated])
+
+  // Keep guest list in sync when the store changes
+  useEffect(() => {
+    if (!isAuthenticated) syncFromGuest()
+  }, [guestDebts, isAuthenticated])
 
   async function handleSave(form: CreateDebtForm) {
-    if (editing) {
-      await debtService.update(editing.id, form)
+    if (isAuthenticated) {
+      if (editing) {
+        await debtService.update(editing.id, form)
+      } else {
+        await debtService.create(form)
+      }
+      await loadDebts()
     } else {
-      await debtService.create(form)
+      if (editing) {
+        guestUpdate(editing.id, form)
+      } else {
+        guestAdd(form)
+      }
     }
-    await loadDebts()
     setModalOpen(false)
     setEditing(null)
   }
 
   async function handleDelete(id: string) {
-    if (confirm('Delete this debt? This cannot be undone.')) {
+    if (!confirm('Delete this debt? This cannot be undone.')) return
+    if (isAuthenticated) {
       await debtService.remove(id)
       await loadDebts()
+    } else {
+      guestRemove(id)
     }
   }
 
@@ -121,7 +156,6 @@ export function DebtsPage() {
                 </div>
               </div>
 
-              {/* Progress bar (paid off vs original) */}
               <div className="w-32 hidden md:block">
                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div
