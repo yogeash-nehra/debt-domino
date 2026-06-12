@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: debt-domino-api
+    runtime: docker
+    dockerfilePath: ./backend/DebtDomino.API/Dockerfile
+    dockerContext: .
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__Default
+        sync: false   # Set in Render dashboard: postgres connection string
+      - key: Jwt__Secret
+        sync: false   # Set in Render dashboard: long random secret
+      - key: Jwt__Issuer
+        value: debtdomino
+      - key: Jwt__Audience
+        value: debtdomino-users
+      - key: Jwt__ExpiryMinutes
+        value: "60"
+      - key: Frontend__Url
+        sync: false   # Set in Render dashboard: your frontend service URL
+
+  - type: web
+    name: debt-domino-frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    envVars:
+      - key: API_URL
+        sync: false   # Set in Render dashboard: your backend service URL (e.g. https://debt-domino-api.onrender.com)
