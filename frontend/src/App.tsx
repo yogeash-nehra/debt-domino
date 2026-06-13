@@ -8,6 +8,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { DebtsPage } from './pages/DebtsPage'
 import { PlanPage } from './pages/PlanPage'
 import { PaymentsPage } from './pages/PaymentsPage'
+import { HelpPage } from './pages/HelpPage'
 
 function AuthRedirect({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="debts" element={<DebtsPage />} />
           <Route path="payments" element={<PaymentsPage />} />
           <Route path="plan" element={<PlanPage />} />
+          <Route path="help" element={<HelpPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

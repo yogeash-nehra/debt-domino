@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
-import { LayoutDashboard, CreditCard, TrendingDown, Receipt, LogOut, UserPlus } from 'lucide-react'
+import { LayoutDashboard, CreditCard, TrendingDown, Receipt, LogOut, UserPlus, HelpCircle } from 'lucide-react'
 
 export function Layout() {
   const { user, logout, isAuthenticated } = useAuthStore()
@@ -51,6 +51,10 @@ export function Layout() {
           <NavLink to="/plan" className={navClass}>
             <TrendingDown size={16} />
             Payoff Plan
+          </NavLink>
+          <NavLink to="/help" className={navClass}>
+            <HelpCircle size={16} />
+            Help
           </NavLink>
         </nav>
 
