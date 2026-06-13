@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { planService } from '../services/planService'
 import { useAuthStore } from '../store/authStore'
@@ -17,7 +17,8 @@ function fmtDate(iso: string) {
 
 export function DashboardPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const guestDebts = useGuestStore((s) => s.debts.filter((d) => !d.isPaidOff))
+  const rawGuestDebts = useGuestStore((s) => s.debts)
+  const guestDebts = useMemo(() => rawGuestDebts.filter((d) => !d.isPaidOff), [rawGuestDebts])
   const guestStrategy = useGuestStore((s) => s.strategy)
   const guestExtra = useGuestStore((s) => s.extraMonthlyPayment)
 

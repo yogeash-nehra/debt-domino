@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { debtService } from '../services/debtService'
 import { useAuthStore } from '../store/authStore'
 import { useGuestStore } from '../store/guestStore'
@@ -30,7 +30,8 @@ const DEBT_TYPE_COLORS: Record<string, string> = {
 
 export function DebtsPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const guestDebts = useGuestStore((s) => s.debts.filter((d) => !d.isPaidOff))
+  const rawGuestDebts = useGuestStore((s) => s.debts)
+  const guestDebts = useMemo(() => rawGuestDebts.filter((d) => !d.isPaidOff), [rawGuestDebts])
   const guestAdd = useGuestStore((s) => s.addDebt)
   const guestUpdate = useGuestStore((s) => s.updateDebt)
   const guestRemove = useGuestStore((s) => s.removeDebt)

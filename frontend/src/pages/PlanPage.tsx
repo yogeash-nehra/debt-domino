@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { planService } from '../services/planService'
 import { debtService } from '../services/debtService'
 import { useAuthStore } from '../store/authStore'
@@ -23,7 +23,8 @@ function fmtDate(iso: string) {
 
 export function PlanPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const guestDebts = useGuestStore((s) => s.debts.filter((d) => !d.isPaidOff))
+  const rawGuestDebts = useGuestStore((s) => s.debts)
+  const guestDebts = useMemo(() => rawGuestDebts.filter((d) => !d.isPaidOff), [rawGuestDebts])
   const guestStrategy = useGuestStore((s) => s.strategy)
   const guestExtra = useGuestStore((s) => s.extraMonthlyPayment)
   const guestSetPlan = useGuestStore((s) => s.setPlan)
