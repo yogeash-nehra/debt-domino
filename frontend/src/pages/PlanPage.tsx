@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { planService } from '../services/planService'
 import { debtService } from '../services/debtService'
+import { calculateGuestSnapshot } from '../services/amortisation'
+import api from '../services/api'
 import { useAuthStore } from '../store/authStore'
 import { useGuestStore } from '../store/guestStore'
 import type { Snapshot, Strategy } from '../types'
 import { PayoffChart } from '../components/PayoffChart'
 import { TrendingDown, RefreshCw } from 'lucide-react'
-import api from '../services/api'
 
 const STRATEGIES: { value: Strategy; label: string; desc: string }[] = [
   { value: 'avalanche', label: 'Avalanche', desc: 'Highest interest first — saves the most money' },
@@ -40,10 +41,11 @@ export function PlanPage() {
 
   function guestDebtInputs() {
     return guestDebts.map((d) => ({
+      id: d.id,
+      name: d.name,
       balance: d.currentBalance,
       annualRate: d.annualInterestRate,
       minimumPayment: d.minimumPayment,
-      sortOrder: d.sortOrder,
     }))
   }
 
@@ -55,12 +57,8 @@ export function PlanPage() {
           setStrategy(guestStrategy)
           setExtra(guestExtra)
           setSliderValue(guestExtra)
-          const { data } = await api.post<Snapshot>('/plans/preview', {
-            strategy: guestStrategy,
-            extraMonthlyPayment: guestExtra,
-            debts: guestDebtInputs(),
-          })
-          setSnapshot(data)
+          const snap = calculateGuestSnapshot(guestDebtInputs(), guestStrategy, guestExtra)
+          setSnapshot(snap)
           return
         }
 
@@ -86,12 +84,8 @@ export function PlanPage() {
     setCalculating(true)
     try {
       if (!isAuthenticated) {
-        const { data } = await api.post<Snapshot>('/plans/preview', {
-          strategy: strat,
-          extraMonthlyPayment: extraPayment,
-          debts: guestDebtInputs(),
-        })
-        setSnapshot(data)
+        const snap = calculateGuestSnapshot(guestDebtInputs(), strat, extraPayment)
+        setSnapshot(snap)
         setPreviewSnapshot(null)
         guestSetPlan(strat, extraPayment)
         return
@@ -107,15 +101,15 @@ export function PlanPage() {
 
   const runPreview = useCallback(async (extraPayment: number) => {
     try {
-      let debts
-      if (isAuthenticated) {
-        const summary = await debtService.getAll()
-        debts = summary.debts
-          .filter((d) => !d.isPaidOff)
-          .map((d) => ({ balance: d.currentBalance, annualRate: d.annualInterestRate, minimumPayment: d.minimumPayment, sortOrder: d.sortOrder }))
-      } else {
-        debts = guestDebtInputs()
+      if (!isAuthenticated) {
+        const snap = calculateGuestSnapshot(guestDebtInputs(), strategy, extraPayment)
+        setPreviewSnapshot(snap)
+        return
       }
+      const summary = await debtService.getAll()
+      const debts = summary.debts
+        .filter((d) => !d.isPaidOff)
+        .map((d) => ({ balance: d.currentBalance, annualRate: d.annualInterestRate, minimumPayment: d.minimumPayment, sortOrder: d.sortOrder }))
       const { data } = await api.post<Snapshot>('/plans/preview', { strategy, extraMonthlyPayment: extraPayment, debts })
       setPreviewSnapshot(data)
     } catch {

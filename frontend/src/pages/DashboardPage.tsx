@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { planService } from '../services/planService'
+import { calculateGuestSnapshot } from '../services/amortisation'
 import { useAuthStore } from '../store/authStore'
 import { useGuestStore } from '../store/guestStore'
-import api from '../services/api'
-import type { Dashboard, Snapshot } from '../types'
+import type { Dashboard } from '../types'
 import { TrendingDown, CreditCard, Calendar, PiggyBank, Plus } from 'lucide-react'
 
 function fmt(n: number) {
@@ -50,16 +50,16 @@ export function DashboardPage() {
     }
 
     const debts = guestDebts.map((d) => ({
+      id: d.id,
+      name: d.name,
       balance: d.currentBalance,
       annualRate: d.annualInterestRate,
       minimumPayment: d.minimumPayment,
-      sortOrder: d.sortOrder,
     }))
 
-    api.post<Snapshot>('/plans/preview', { strategy: guestStrategy, extraMonthlyPayment: guestExtra, debts })
-      .then((r) => setData({ ...base, debtFreeDate: r.data.debtFreeDate, interestSaved: r.data.interestSaved }))
-      .catch(() => setData(base))
-      .finally(() => setLoading(false))
+    const snap = calculateGuestSnapshot(debts, guestStrategy, guestExtra)
+    setData({ ...base, debtFreeDate: snap.debtFreeDate, interestSaved: snap.interestSaved })
+    setLoading(false)
   }, [isAuthenticated, guestDebts, guestStrategy, guestExtra])
 
   if (loading) {

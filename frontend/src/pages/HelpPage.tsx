@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useAuthStore } from '../store/authStore'
 import {
   LayoutDashboard,
   CreditCard,
@@ -16,6 +17,8 @@ function fmt(n: number) {
 }
 
 export function HelpPage() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+
   return (
     <div className="p-8 max-w-3xl">
 
@@ -223,11 +226,11 @@ export function HelpPage() {
           {[
             {
               q: 'Is my data safe?',
-              a: 'In guest mode, all data is stored only in your browser\'s local storage — nothing is sent to any server. Create a free account to store it securely in the cloud so it persists across devices.',
+              a: 'Guest mode is great for exploring, but your data only lives in this browser — clear your cache and it\'s gone. Create a free account to store everything securely in the cloud, access it from any device, and never lose your progress.',
             },
             {
               q: 'The sample debts aren\'t mine — how do I replace them?',
-              a: 'Go to My Debts, delete the sample debts, and add your own. The plan and dashboard will update immediately to reflect your real situation.',
+              a: 'Go to My Debts, delete the sample debts, and add your own. For the best experience, create a free account first so your real debts are saved permanently and synced across devices.',
             },
             {
               q: 'What\'s the difference between "minimum payment" and "extra payment"?',
@@ -238,8 +241,8 @@ export function HelpPage() {
               a: 'Different strategies attack debts in a different order. Avalanche eliminates the costliest interest faster, which usually results in a slightly earlier debt-free date. Snowball clears individual debts sooner, which can feel faster even if the total date is similar.',
             },
             {
-              q: 'Do I need to log every payment?',
-              a: 'Only if you want accurate balance tracking. You can skip it and use the Plan page purely for projections. But logging payments keeps your current balance accurate and makes the dashboard progress bar meaningful.',
+              q: 'Can I track real payments and see my actual progress?',
+              a: 'Payment tracking and live balance updates require a free account. Sign up to log every payment, watch your balances fall in real time, and keep your plan accurate as you pay down your debts.',
             },
           ].map(({ q, a }) => (
             <div key={q} className="bg-white rounded-xl border border-slate-200 p-5">
@@ -251,16 +254,37 @@ export function HelpPage() {
       </section>
 
       {/* CTA */}
-      <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-8 text-white text-center">
-        <h2 className="text-xl font-bold mb-2">Ready to see your debt-free date?</h2>
-        <p className="text-indigo-200 mb-6 text-sm">The sample data is already loaded. Head to the Plan page to see your projected payoff timeline.</p>
-        <Link
-          to="/plan"
-          className="inline-flex items-center gap-2 bg-white text-indigo-700 px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-50 transition-colors"
-        >
-          View your payoff plan <ArrowRight size={16} />
-        </Link>
-      </div>
+      {isAuthenticated ? (
+        <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-8 text-white text-center">
+          <h2 className="text-xl font-bold mb-2">Ready to see your debt-free date?</h2>
+          <p className="text-indigo-200 mb-6 text-sm">Head to the Plan page to explore strategies and see your projected payoff timeline.</p>
+          <Link
+            to="/plan"
+            className="inline-flex items-center gap-2 bg-white text-indigo-700 px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-50 transition-colors"
+          >
+            View your payoff plan <ArrowRight size={16} />
+          </Link>
+        </div>
+      ) : (
+        <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-8 text-white text-center">
+          <h2 className="text-xl font-bold mb-2">Save your plan — create a free account</h2>
+          <p className="text-indigo-200 mb-6 text-sm">Guest mode is great for exploring. Sign up to lock in your debts, track real payments, and access your plan from any device.</p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <Link
+              to="/register"
+              className="inline-flex items-center gap-2 bg-white text-indigo-700 px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-50 transition-colors"
+            >
+              Create free account <ArrowRight size={16} />
+            </Link>
+            <Link
+              to="/plan"
+              className="inline-flex items-center gap-2 text-indigo-200 hover:text-white text-sm transition-colors"
+            >
+              Continue as guest
+            </Link>
+          </div>
+        </div>
+      )}
 
     </div>
   )
